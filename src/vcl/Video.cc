@@ -171,6 +171,11 @@ std::vector<unsigned char> Video::get_encoded()
     return encoded;
 }
 
+KeyFrameList Video::get_key_frame_list()
+{
+    return _key_frame_list;
+}
+
     /*  *********************** */
     /*        SET FUNCTIONS     */
     /*  *********************** */
@@ -257,6 +262,11 @@ void Video::threshold(int value)
 {
     _flag_stored = false;
     _operations.push_back(std::make_shared<Threshold>(value));
+}
+
+void Video::key_frames(void)
+{
+    _operations.push_back(std::make_shared<KeyFrame>());
 }
 
 void Video::store(const std::string &video_id, Video::Codec video_codec)
@@ -431,6 +441,27 @@ void Video::Threshold::operator()(Video *video)
     for (auto& frame : video->_frames) {
         frame.threshold(_threshold);
     }
+}
+
+    /*  *********************** */
+    /*    KEY FRAME OPERATION   */
+    /*  *********************** */
+
+void Video::KeyFrame::operator()(Video *video)
+{
+    KeyFrameParser parser(video->get_video_id());
+
+    int ret;
+
+    ret = parser.init();
+    if (ret != 0)
+        throw VCLException(FFmpegInitFailed, "FFmpeg: initialization failed");
+
+    ret = parser.parse(video->_key_frame_list);
+    if (ret != 0)
+        throw VCLException(FFmpegParseFailed,
+                "FFmpeg: key frame parsing failed");
+
 }
 
     /*  *********************** */

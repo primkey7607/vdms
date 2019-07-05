@@ -55,6 +55,10 @@ namespace VCL {
 
       OpenCVError,
 
+      FFmpegInitFailed,
+      FFmpegParseFailed,
+      FFmpegDecodeFailed,
+
     };
 
     struct Exception {

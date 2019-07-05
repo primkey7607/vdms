@@ -42,6 +42,7 @@
 #include "vcl/Image.h"
 
 #include "Exception.h"
+#include "KeyFrameParser.h"
 #include "utils.h"
 
 namespace VCL {
@@ -65,7 +66,8 @@ namespace VCL {
 
         enum Unit { FRAMES = 0, SECONDS = 1 };
 
-        enum OperationType { READ, WRITE, RESIZE, CROP, THRESHOLD, INTERVAL };
+        enum OperationType { READ, WRITE, RESIZE, CROP, THRESHOLD, INTERVAL,
+                             KEY_FRAME };
 
     /*  *********************** */
     /*        CONSTRUCTORS      */
@@ -175,6 +177,13 @@ namespace VCL {
          */
         std::vector<unsigned char> get_encoded();
 
+        /**
+         *  Gets a list of key frames, generated as result of KeyFrame operation
+         *
+         *  @return List of KeyFrame objects
+         */
+        KeyFrameList get_key_frame_list();
+
     /*  *********************** */
     /*        SET FUNCTIONS     */
     /*  *********************** */
@@ -239,6 +248,14 @@ namespace VCL {
     void threshold(int value);
 
     /**
+     *  Generates key-frames of the video, if the video is encoded with a H264
+     *  encoder. Index, and byte offset/length of each key frame is stored.
+     *  This operation is independent of other prior visual operations that
+     *  may have been applied.
+     */
+    void key_frames(void);
+
+    /**
      *  Modifies the number of frames in the video.
      *  Frames 0 to start-1 are dropped.
      *  Frames stop to last are dropped.
@@ -295,6 +312,9 @@ namespace VCL {
         float _fps;
 
         Codec _codec; // (h.264, etc).
+
+        // List of key frames, filled only when KeyFrames operation is applied
+        KeyFrameList _key_frame_list;
 
         std::vector<std::shared_ptr<Operation>> _operations;
 
@@ -513,6 +533,32 @@ namespace VCL {
             void operator()(Video *video);
 
             OperationType get_type() { return THRESHOLD; };
+        };
+
+    /*  *********************** */
+    /*    KEY FRAME OPERATION   */
+    /*  *********************** */
+
+        /**  Extends Operation, generates a list of key frames.
+         *   Key frame generation works only on H264 streams.
+         */
+        class KeyFrame : public Operation {
+        public:
+            /**
+             *  Constructor, sets the threshold value and format
+             *
+             *  @param value  Minimum value pixels should be
+             */
+            KeyFrame(void) {};
+
+            /**
+             *  Generates list of key frames from the video
+             *
+             *  @param img  A pointer to the current Video object
+             */
+            void operator()(Video *video);
+
+            OperationType get_type() { return KEY_FRAME; };
         };
 
     protected:
