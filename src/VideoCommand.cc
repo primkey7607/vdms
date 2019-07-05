@@ -75,6 +75,9 @@ void VideoCommand::enqueue_operations(VCL::Video& video, const Json::Value& ops)
                         get_value<int>(op, "width"),
                         get_value<int>(op, "height") ));
         }
+        else if (type == "key_frames") {
+            video.key_frames();
+        }
         else {
             throw ExceptionCommand(ImageError, "Operation not defined");
         }
@@ -162,6 +165,20 @@ int AddVideo::construct_protobuf(
     VCL::Video::Codec vcl_codec = string_to_codec(codec);
 
     video.store(file_name, vcl_codec);
+
+    // Add key-frames (if extracted) as nodes connected to the video
+    VCL::KeyFrameList frame_list = video.get_key_frame_list();
+    for (const auto &frame : frame_list) {
+        Json::Value frame_props;
+        frame_props["idx"]  = static_cast<Json::UInt64>(frame.idx);
+        frame_props["base"] = static_cast<Json::Int64> (frame.base);
+
+        int frame_ref = query.get_available_reference();
+        query.AddNode(frame_ref, VDMS_VID_KEY_FRAME, frame_props,
+                      Json::Value());
+        query.AddEdge(-1, node_ref, frame_ref, VDMS_VID_EDGE,
+                      Json::Value());
+    }
 
     // In case we need to cleanup the query
     error["video_added"] = file_name;
