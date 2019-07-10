@@ -662,3 +662,39 @@ TEST_F(VideoTest, CropWrite)
         ASSERT_TRUE(false);
     }
 }
+
+TEST_F(VideoTest, KeyFrameExtractionSuccess)
+{
+    try {
+        VCL::VideoTest video_data(_video_path_mp4_h264);
+        video_data.key_frames();
+
+        video_data.perform_operations();
+
+        auto key_frame_list = video_data.get_key_frame_list();
+
+        ASSERT_FALSE(key_frame_list.empty());
+
+    } catch (VCL::Exception e) {
+        print_exception(e);
+        ASSERT_TRUE(false);
+    }
+}
+
+TEST_F(VideoTest, KeyFrameExtractionFailure)
+{
+    try {
+        VCL::VideoTest video_data(_video_path_avi_xvid);
+        video_data.key_frames();
+
+        video_data.perform_operations();
+
+        auto key_frame_list = video_data.get_key_frame_list();
+
+        ASSERT_TRUE(key_frame_list.empty());
+
+    } catch (VCL::Exception e) {
+        print_exception(e);
+        ASSERT_TRUE(false);
+    }
+}
