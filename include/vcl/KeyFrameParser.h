@@ -49,6 +49,9 @@ namespace VCL {
 
     using KeyFrameList = std::vector<KeyFrame>;
 
+    /*  *********************** */
+    /*    KEY_FRAME_PARSER      */
+    /*  *********************** */
     class KeyFrameParser {
 
     private:
@@ -79,5 +82,69 @@ namespace VCL {
 
         int init(void);
         int parse(KeyFrameList& frame_list);
+    };
+
+    /*  *********************** */
+    /*    KEY_FRAME_DECODER     */
+    /*  *********************** */
+    class KeyFrameDecoder {
+
+    private:
+
+        enum class H264Format {
+            AVCC   = 0,
+            AnnexB = 1
+        };
+
+        struct DecoderContext {
+            AVBSFContext    *bsf_context;
+            AVFormatContext *fmt_context;
+            AVCodecContext  *codec_context;
+            unsigned stream_index;
+            H264Format      byte_stream_format;
+
+            DecoderContext() : bsf_context(NULL), fmt_context(NULL),
+                               codec_context(NULL), stream_index(0),
+                               byte_stream_format(H264Format::AVCC) {};
+        };
+
+        struct FrameInterval {
+            KeyFrame start;
+            KeyFrame end;
+        };
+
+        struct DecodedKeyFrame {
+            AVFrame *frame;
+            uint64_t idx;
+        };
+
+        std::vector<std::pair<FrameInterval, std::vector<uint64_t>>> _interval_map;
+        std::vector<DecodedKeyFrame> _frame_list;
+        std::string    _filename;
+        DecoderContext _ctx;
+
+        int init_decoder(void);
+        int init_bsf(void);
+        int decode_interval(KeyFrame start, KeyFrame end,
+                            const std::vector<uint64_t> &frames);
+
+        int populate_interval_map(const KeyFrameList          &key_frames,
+                                  const std::vector<uint64_t> &frames);
+
+        int on_error(int errnum, const std::string opt = "");
+        void context_cleanup (void);
+
+    public:
+        KeyFrameDecoder() {};
+        KeyFrameDecoder(std::string filename): _filename(filename) {};
+        KeyFrameDecoder(KeyFrameDecoder&) = delete;
+        ~KeyFrameDecoder();
+
+        void set_filename(std::string filename);
+
+        int init(void);
+        int set_interval_map(const KeyFrameList          &key_frames,
+                             const std::vector<uint64_t> &frames);
+        int decode(void);
     };
 }
