@@ -42,7 +42,7 @@
 #include "vcl/Image.h"
 
 #include "Exception.h"
-#include "KeyFrameParser.h"
+#include "KeyFrame.h"
 #include "utils.h"
 
 namespace VCL {
