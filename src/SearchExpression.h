@@ -62,6 +62,9 @@ namespace VDMS {
         /// The conjunctions of property predicates
         std::vector<PMGD::PropertyPredicate> _predicates;
 
+        /// The conjunctions of property predicates for edges
+        std::vector<PMGD::PropertyPredicate> _e_predicates;
+
         /// A pointer to the database
         PMGD::Graph &_db;
 
@@ -71,10 +74,13 @@ namespace VDMS {
             _db(db), _tag(tag), _or(p_or) {}
 
         void add(PMGD::PropertyPredicate pp) { _predicates.push_back(pp); }
+        void add_e(PMGD::PropertyPredicate pp) { _e_predicates.push_back(pp); }
         const PMGD::StringID tag() const { return _tag; };
         PMGD::Graph &db() const { return _db; }
         const PMGD::PropertyPredicate &predicate(int i) const { return _predicates.at(i); }
         const size_t num_predicates() const { return _predicates.size(); }
+
+        std::vector<PMGD::PropertyPredicate> get_e_pp() const { return _e_predicates; }
 
         PMGD::NodeIterator eval_nodes();
         PMGD::NodeIterator eval_nodes(const PMGD::Node &node,

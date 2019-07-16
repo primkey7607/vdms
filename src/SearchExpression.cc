@@ -93,7 +93,7 @@ public:
                                PMGD::StringID edgetag, bool unique,
                                const SearchExpression &neighbor_expr)
         : _expr(neighbor_expr),
-          mNodeIt(get_neighbors(node, dir, edgetag, unique)),
+          mNodeIt(get_neighbors(node, dir, edgetag, _expr.get_e_pp(), unique)),
           _neighbor(true)
     {
         _start_at = 0;
@@ -189,7 +189,7 @@ public:
                        PMGD::StringID edgetag, bool unique,
                        const SearchExpression &neighbor_expr)
         : _expr(neighbor_expr),
-          _neighborIt(get_neighbors(node, dir, edgetag, unique)),
+          _neighborIt(get_neighbors(node, dir, edgetag, _expr.get_e_pp(), unique)),
           _neighbor(true)
     {
         _next_neighbor();

@@ -494,6 +494,14 @@ int PMGDQueryHandler::query_node(const protobufs::QueryNode &qn,
         search.add(j_pp);
     }
 
+    if (has_link) { // Check for edges constraints
+        for (int i = 0; i < qn.link().predicates_size(); ++i) {
+            const PMGDPropPred &p_pp = qn.link().predicates(i);
+            PropertyPredicate j_pp = construct_search_term(p_pp);
+            search.add_e(j_pp);
+        }
+    }
+
     PMGD::NodeIterator ni = has_link ?
                        PMGD::NodeIterator(new MultiNeighborIteratorImpl(start_ni, search, dir, edge_tag))
                        : search.eval_nodes();
