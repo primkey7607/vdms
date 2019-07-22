@@ -29,6 +29,8 @@ rm -r test_db
 
 ../../vdms -cfg config-tests.json > screen.log 2> log.log &
 python -m unittest discover --pattern=*.py -v
+#for testing ONLY video
+#python TestVideos.py
 
 sleep 1
 pkill vdms

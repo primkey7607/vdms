@@ -83,6 +83,7 @@ void QueryHandler::init()
     _rs_cmds["FindBoundingBox"]    = new FindBoundingBox();
 
     _rs_cmds["AddVideo"]           = new AddVideo();
+    _rs_cmds["AddVideoBL"]           = new AddVideoBL();
     _rs_cmds["UpdateVideo"]        = new UpdateVideo();
     _rs_cmds["FindVideo"]          = new FindVideo();
     _rs_cmds["FindFrames"]         = new FindFrames();

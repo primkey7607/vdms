@@ -87,6 +87,32 @@ namespace VDMS {
 
         bool need_blob(const Json::Value& cmd) { return true; }
     };
+    
+    //===============NEW AddVideo that uses Bulk Loader=====================
+    class AddVideoBL: public VideoCommand
+    {
+        const std::string DEFAULT_VIDEO_PATH = "videos/database";
+
+        std::string _storage_video;
+
+    public:
+        AddVideoBL();
+
+        int construct_protobuf(PMGDQuery& tx,
+                               const Json::Value& root,
+                               const std::string& blob,
+                               int grp_id,
+                               Json::Value& error);
+
+        Json::Value construct_responses(
+                Json::Value &json_responses,
+                const Json::Value &json,
+                protobufs::queryMessage &response,
+                const std::string &blob);
+
+        bool need_blob(const Json::Value& cmd) { return true; }
+    };
+    //===============END NEW AddVideo that uses Bulk Loader=====================
 
     class UpdateVideo: public VideoCommand
     {

@@ -25,6 +25,7 @@
 #
 
 import TestCommand
+import unittest
 
 class TestVideos(TestCommand.TestCommand):
 
@@ -452,3 +453,6 @@ class TestVideos(TestCommand.TestCommand):
 
         self.assertEqual(response[0]["UpdateVideo"]["count"], 1)
         self.assertEqual(len(img_array), 0)
+#Add if you want to test ONLY videos
+#if __name__== '__main__':
+#   unittest.main()

@@ -56,6 +56,7 @@
       { "$ref": "#/definitions/FindBoundingBoxTop" },
 
       { "$ref": "#/definitions/AddVideoTop" },
+      { "$ref": "#/definitions/AddVideoBLTop" },
       { "$ref": "#/definitions/UpdateVideoTop" },
       { "$ref": "#/definitions/FindVideoTop" },
       { "$ref": "#/definitions/FindFramesTop" }
@@ -439,6 +440,13 @@
       "additionalProperties": false
     },
 
+    "AddVideoBLTop": {
+      "properties": {
+        "AddVideoBL" : { "type": "object", "$ref": "#/definitions/AddVideoBL" }
+      },
+      "additionalProperties": false
+    },
+
     "UpdateVideoTop": {
       "properties": {
         "UpdateVideo" : { "type": "object", "$ref": "#/definitions/UpdateVideo" }
@@ -665,6 +673,20 @@
         "_ref":       { "$ref": "#/definitions/refInt" },
         "codec":      { "$ref": "#/definitions/vidCodecString" },
         "container":  { "$ref": "#/definitions/vidContainerString" },
+        "link":       { "$ref": "#/definitions/blockLink" },
+        "operations": { "$ref": "#/definitions/blockVideoOperations" },
+        "properties": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+
+    "AddVideoBL": {
+      "properties": {
+        "_ref":       { "$ref": "#/definitions/refInt" },
+        "codec":      { "$ref": "#/definitions/vidCodecString" },
+        "container":  { "$ref": "#/definitions/vidContainerString" },
+        "accessTime": { "$ref": "#/definitions/positiveInt" },
+        "storeSize":  { "$ref": "#/definitions/positiveInt" },
         "link":       { "$ref": "#/definitions/blockLink" },
         "operations": { "$ref": "#/definitions/blockVideoOperations" },
         "properties": { "type": "object" }

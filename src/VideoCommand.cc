@@ -31,7 +31,10 @@
 
 #include <iostream>
 #include <fstream>
+#include <regex>
+#include <string>
 
+#include "dirent.h"
 #include "ImageCommand.h" // for enqueue_operations of Image type
 #include "VideoCommand.h"
 #include "VDMSConfig.h"
@@ -174,6 +177,160 @@ int AddVideo::construct_protobuf(
 }
 
 Json::Value AddVideo::construct_responses(
+    Json::Value& response,
+    const Json::Value& json,
+    protobufs::queryMessage &query_res,
+    const std::string& blob)
+{
+    Json::Value ret;
+    ret[_cmd_name] = RSCommand::check_responses(response);
+
+    return ret;
+}
+
+//========= AddVideo Bulk Loader definitions =========
+AddVideoBL::AddVideoBL() : VideoCommand("AddVideoBL")
+{
+    _storage_video = VDMSConfig::instance()->get_path_videos();
+}
+
+int AddVideoBL::construct_protobuf(
+    PMGDQuery& query,
+    const Json::Value& jsoncmd,
+    const std::string& blob,
+    int grp_id,
+    Json::Value& error)
+{
+    const Json::Value& cmd = jsoncmd[_cmd_name];
+    const int accessTime = 
+                            get_value<int>(cmd, "accessTime", 1);
+    const int storeSize = 
+                            get_value<int>(cmd, "storeSize", 1);
+    //we will treat accessTime and storeSize as override variables: if either
+    //is 1, we will override the encoding choice.
+    if (accessTime == 1 && storeSize == 1){ //if both 1, just load as normal
+
+        int node_ref = get_value<int>(cmd, "_ref",
+                                      query.get_available_reference());
+
+        VCL::Video video((void*)blob.data(), blob.size());
+
+        if (cmd.isMember("operations")) {
+            enqueue_operations(video, cmd["operations"]);
+        }
+
+        // The container and codec are checked by the schema.
+        // We default to mp4 and h264, if not specified
+        const std::string& container =
+                                get_value<std::string>(cmd, "container", "mp4");
+    
+        const std::string& file_name =
+                            VCL::create_unique(_storage_video, container);
+
+        // Modifiyng the existing properties that the user gives
+        // is a good option to make the AddNode more simple.
+        // This is not ideal since we are manupulating with user's
+        // input, but for now it is an acceptable solution.
+        Json::Value props = get_value<Json::Value>(cmd, "properties");
+        props[VDMS_VID_PATH_PROP] = file_name;
+
+        // Add Video node
+        query.AddNode(node_ref, VDMS_VID_TAG, props, Json::Value());
+
+        const std::string& codec = get_value<std::string>(cmd, "codec", "h264");
+        VCL::Video::Codec vcl_codec = string_to_codec(codec);
+
+        video.store(file_name, vcl_codec);
+
+        // In case we need to cleanup the query
+        error["video_added"] = file_name;
+
+        if (cmd.isMember("link")) {
+            add_link(query, cmd["link"], node_ref, VDMS_VID_EDGE);
+        }
+    }else { 
+        //for now, just assume we want minimal storage size and minimal
+        //minimal access time
+        std::ofstream lfile;
+        lfile.open("fullfile.mp4");
+        lfile << blob;
+        lfile.close();
+        
+        system("python splitToFile.py fullfile.mp4");
+        //get the names of all files in current directory
+        int i = 0;
+        std::string fname = "tmp" + std::to_string(i) + ".mp4";
+        std::ifstream f(fname.c_str());
+        while (f.good()){
+            printf("In the while loop!");
+            std::ifstream clip;
+            std::string line;
+            std::string blob2 = "";
+            clip.open(fname);
+            if (clip.is_open()){
+                while (getline(clip,line)){
+                    blob2 = blob2 + line + "\n";
+                }
+                clip.close();
+            }
+            int node_ref = get_value<int>(cmd, "_ref",
+                              query.get_available_reference());
+            printf("Got ref");
+
+            VCL::Video video((void*)blob2.data(), blob2.size());
+            printf("Successfully got video");
+
+            if (cmd.isMember("operations")) {
+                enqueue_operations(video, cmd["operations"]);
+            }
+
+            // The container and codec are checked by the schema.
+            // We default to mp4 and h264, if not specified
+            const std::string& container =
+                                    get_value<std::string>(cmd, "container", "mp4");
+
+            const std::string& file_name =
+                                VCL::create_unique(_storage_video, container);
+            printf("Created unique");
+
+            // Modifiyng the existing properties that the user gives
+            // is a good option to make the AddNode more simple.
+            // This is not ideal since we are manupulating with user's
+            // input, but for now it is an acceptable solution.
+            Json::Value props = get_value<Json::Value>(cmd, "properties");
+            props[VDMS_VID_PATH_PROP] = file_name;
+
+            // Add Video node
+            query.AddNode(node_ref, VDMS_VID_TAG, props, Json::Value());
+            printf("Added video node\n");
+
+            const std::string& codec = get_value<std::string>(cmd, "codec", "h264");
+            printf("%s\n", codec.c_str());
+            VCL::Video::Codec vcl_codec = string_to_codec(codec);
+            printf("Got vcl_codec");
+
+            video.store(file_name, vcl_codec);
+            printf("Stored video with right codec");
+
+            // In case we need to cleanup the query
+            error["video_added"] = file_name;
+
+            if (cmd.isMember("link")) {
+                add_link(query, cmd["link"], node_ref, VDMS_VID_EDGE);
+            }
+            i++;
+            fname = "tmp" + std::to_string(i) + ".mp4";
+            f.close();
+            f.open(fname);
+        }
+        
+    }
+    
+
+    return 0;
+}
+
+Json::Value AddVideoBL::construct_responses(
     Json::Value& response,
     const Json::Value& json,
     protobufs::queryMessage &query_res,
