@@ -34,7 +34,6 @@
 #include <regex>
 #include <string>
 
-#include "dirent.h"
 #include "ImageCommand.h" // for enqueue_operations of Image type
 #include "VideoCommand.h"
 #include "VDMSConfig.h"
@@ -252,33 +251,44 @@ int AddVideoBL::construct_protobuf(
         //for now, just assume we want minimal storage size and minimal
         //minimal access time
         std::ofstream lfile;
-        lfile.open("fullfile.mp4");
-        lfile << blob;
-        lfile.close();
+        lfile.open("fullfile.mp4", std::ofstream::binary);
+        if (lfile.is_open()){
+            lfile.write(blob.data(),blob.size());
+            lfile.close();
+        }
         
         system("python splitToFile.py fullfile.mp4");
         //get the names of all files in current directory
         int i = 0;
         std::string fname = "tmp" + std::to_string(i) + ".mp4";
-        std::ifstream f(fname.c_str());
+        //std::string fname = "tmp6.mp4";
+        std::ifstream f(fname.c_str(), std::ifstream::binary);
+        int lastRef = -1;
         while (f.good()){
+            printf("fname: %s\n", fname.c_str());
             printf("In the while loop!");
-            std::ifstream clip;
             std::string line;
             std::string blob2 = "";
-            clip.open(fname);
-            if (clip.is_open()){
-                while (getline(clip,line)){
+            if (f.is_open()){
+                while (getline(f,line)){
                     blob2 = blob2 + line + "\n";
                 }
-                clip.close();
+                f.close();
             }
             int node_ref = get_value<int>(cmd, "_ref",
                               query.get_available_reference());
-            printf("Got ref");
+            if (i == 0){
+                lastRef = node_ref;
+            }
+            if (lastRef >= node_ref){//just give clips ascending ref numbers
+                //in the case where they all have the same ref number
+                lastRef++;
+                node_ref = lastRef;
+            }
+            printf("Got ref: %d\n", node_ref);
 
             VCL::Video video((void*)blob2.data(), blob2.size());
-            printf("Successfully got video");
+            printf("Successfully got video: %d\n", blob2.size());
 
             if (cmd.isMember("operations")) {
                 enqueue_operations(video, cmd["operations"]);
@@ -309,8 +319,16 @@ int AddVideoBL::construct_protobuf(
             VCL::Video::Codec vcl_codec = string_to_codec(codec);
             printf("Got vcl_codec");
 
-            video.store(file_name, vcl_codec);
-            printf("Stored video with right codec");
+            try {
+                video.store(file_name, vcl_codec);
+                printf("Stored video with right codec: %s\n", fname.c_str());
+            } catch(const std::exception& e) {
+                printf("Failed to store video: %s\n", fname.c_str());
+                std::cout << e.what() << "\n";
+            } catch(const VCL::Exception& e){
+                printf("Failed to store video: %s\n", fname.c_str());
+                std::cout << e.name << "\n";
+            }
 
             // In case we need to cleanup the query
             error["video_added"] = file_name;
@@ -320,7 +338,6 @@ int AddVideoBL::construct_protobuf(
             }
             i++;
             fname = "tmp" + std::to_string(i) + ".mp4";
-            f.close();
             f.open(fname);
         }
         

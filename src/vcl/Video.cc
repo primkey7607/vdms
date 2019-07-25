@@ -289,6 +289,7 @@ void Video::delete_video()
 
 Video::Codec Video::Read::read_codec(char* fourcc)
 {
+    printf("fourcc: %s\n", fourcc);
     std::string codec(fourcc);
     std::transform(codec.begin(), codec.end(), codec.begin(), ::tolower);
 
@@ -307,10 +308,14 @@ Video::Codec Video::Read::read_codec(char* fourcc)
 void Video::Read::operator()(Video *video)
 {
     cv::VideoCapture inputVideo(video->_video_id);
+    //printf("OpenCV Backend Name: %s\n", inputVideo.getBackendName().c_str());
+    printf("video ID: %s\n", (video->_video_id).c_str());
 
     video->_fps = static_cast<float>(inputVideo.get(CV_CAP_PROP_FPS));
+    printf("fps: %f\n", video->_fps);
     video->_size.frame_count  = static_cast<int>(
                                 inputVideo.get(CV_CAP_PROP_FRAME_COUNT));
+    printf("frame count: %u\n", video->_size.frame_count);
     video->_size.width        = static_cast<int>(
                                 inputVideo.get(CV_CAP_PROP_FRAME_WIDTH));
     video->_size.height       = static_cast<int>(
@@ -318,6 +323,7 @@ void Video::Read::operator()(Video *video)
 
     // Get Codec Type- Int form
     int ex = static_cast<int>(inputVideo.get(CV_CAP_PROP_FOURCC));
+    printf("retrieved fourcc: %d\n", ex);
     char fourcc[] = {(char)((ex & 0XFF)),
                      (char)((ex & 0XFF00) >> 8),
                      (char)((ex & 0XFF0000) >> 16),
