@@ -687,6 +687,7 @@
         "container":  { "$ref": "#/definitions/vidContainerString" },
         "accessTime": { "$ref": "#/definitions/positiveInt" },
         "storeSize":  { "$ref": "#/definitions/positiveInt" },
+        "clipSize":  { "$ref": "#/definitions/positiveInt" },
         "link":       { "$ref": "#/definitions/blockLink" },
         "operations": { "$ref": "#/definitions/blockVideoOperations" },
         "properties": { "type": "object" }

@@ -256,7 +256,7 @@ int AddVideoBL::construct_protobuf(
             lfile.write(blob.data(),blob.size());
             lfile.close();
         }
-        
+        int csize = get_value<int>(cmd, "clipSize", 2);
         system("python splitToFile.py fullfile.mp4");
         //get the names of all files in current directory
         int i = 0;
@@ -301,7 +301,7 @@ int AddVideoBL::construct_protobuf(
 
             const std::string& file_name =
                                 VCL::create_unique(_storage_video, container);
-            printf("Created unique");
+            
 
             // Modifiyng the existing properties that the user gives
             // is a good option to make the AddNode more simple.
@@ -312,12 +312,11 @@ int AddVideoBL::construct_protobuf(
 
             // Add Video node
             query.AddNode(node_ref, VDMS_VID_TAG, props, Json::Value());
-            printf("Added video node\n");
+            
 
             const std::string& codec = get_value<std::string>(cmd, "codec", "h264");
-            printf("%s\n", codec.c_str());
+            
             VCL::Video::Codec vcl_codec = string_to_codec(codec);
-            printf("Got vcl_codec");
 
             try {
                 video.store(file_name, vcl_codec);

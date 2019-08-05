@@ -34,12 +34,10 @@ def genClips(fname, csize):
     #ffmpeg string
     for i in range(inclips):
         st = i * csize 
-        #en = (i+1) * csize 
         en = csize 
-        #cmdstr = "ffmpeg -i " + fname + " -ss " + str(st) + " -t " + str(en) + " -map_metadata 0" + " -c copy " + "-flags +global_header " + "tmp" + str(i) + ".mp4"
         cmdstr = "ffmpeg -ss " + str(st) + " -i " + fname + " -t " + str(en) + " -map_metadata 0" + " -c copy " + "-flags +global_header " + "tmp" + str(i) + ".mp4"
         os.system(cmdstr)
     
-genClips(sys.argv[1],2)
+genClips(sys.argv[1],sys.argv[2])
 
 
