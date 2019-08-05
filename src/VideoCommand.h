@@ -98,6 +98,11 @@ namespace VDMS {
     public:
         AddVideoBL();
 
+        int bulkLoader(PMGDQuery& tx,
+                       const Json::Value& root,
+                       const std::string& blob,
+                       int grp_id,
+                       Json::Value& error);
         int construct_protobuf(PMGDQuery& tx,
                                const Json::Value& root,
                                const std::string& blob,
