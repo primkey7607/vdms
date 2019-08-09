@@ -103,6 +103,9 @@ namespace VDMS {
                        const std::string& blob,
                        int grp_id,
                        Json::Value& error);
+        int storeNthFrames(const std::string& blob,
+						   int n,
+						   const std::string& vidname);
         int construct_protobuf(PMGDQuery& tx,
                                const Json::Value& root,
                                const std::string& blob,

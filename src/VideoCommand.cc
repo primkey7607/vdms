@@ -293,6 +293,25 @@ int AddVideoBL::bulkLoader(
         
 }
 
+int AddVideoBL::storeNthFrames(const std::string& blob, int n, const std::string& vname)
+{
+	
+	std::ofstream lfile;
+    lfile.open("fullfile.mp4", std::ofstream::binary);
+    if (lfile.is_open()){
+        lfile.write(blob.data(),blob.size());
+        lfile.close();
+    }
+	std::string cmdstr = "./skipnth.sh fullfile.mp4 " + std::to_string(n);
+	//Use client script to add generated images to the database
+	std::string clscript = "python addAllImgs.py " + vname;
+	//NOTE: This system() call is temporary until we figure out how to invoke AddImage functions to load images
+	//directly
+	system(clscript.c_str());
+	return 0;
+	
+}
+
 int AddVideoBL::construct_protobuf(
     PMGDQuery& query,
     const Json::Value& jsoncmd,
@@ -308,6 +327,8 @@ int AddVideoBL::construct_protobuf(
     //we will treat accessTime and storeSize as override variables: if either
     //is 1, we will override the encoding choice.
     if (accessTime == 1 && storeSize == 1){ //if both 1, just load as normal
+	//That is, assume the user might want to use frameskipping on the whole video and just load
+	//images, so retrieval of the images for NN evaluation might be easier.
 
         int node_ref = get_value<int>(cmd, "_ref",
                                       query.get_available_reference());
@@ -322,6 +343,13 @@ int AddVideoBL::construct_protobuf(
         // We default to mp4 and h264, if not specified
         const std::string& container =
                                 get_value<std::string>(cmd, "container", "mp4");
+		
+		const int skipnth = get_value<int>(cmd, "frameSkip", 0);
+		Json::Value props = get_value<Json::Value>(cmd, "properties");
+		const std::string vidname = get_value<std::string>(props, "vidname", "");
+		if (skipnth > 0 && vidname != ""){
+			return AddVideoBL::storeNthFrames(blob, skipnth, vidname);
+		}
     
         const std::string& file_name =
                             VCL::create_unique(_storage_video, container);
@@ -330,7 +358,6 @@ int AddVideoBL::construct_protobuf(
         // is a good option to make the AddNode more simple.
         // This is not ideal since we are manupulating with user's
         // input, but for now it is an acceptable solution.
-        Json::Value props = get_value<Json::Value>(cmd, "properties");
         props[VDMS_VID_PATH_PROP] = file_name;
 
         // Add Video node
