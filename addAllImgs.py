@@ -8,21 +8,21 @@ db = vdms.vdms()
 db.connect("localhost")
 blob_arr = []
 def ithquery(fname, vname):
-    fd = open(fname)
-    blob = fd.read()
-    
-    addImage = {}
-    props = {}
-    props["name"] = "Video Image: " + fname
+	fd = open(fname)
+	blob = fd.read()
+
+	addImage = {}
+	props = {}
+	props["name"] = "Video Image: " + fname
 	props["vidname"] = vname
-    props["length"] = "N/A"
-    
-    addImage["properties"] = props
-    
-    query = {}
-    query["AddImage"] = addImage
-    fd.close()
-    return blob,query
+	props["length"] = "N/A"
+
+	addImage["properties"] = props
+
+	query = {}
+	query["AddImage"] = addImage
+	fd.close()
+	return blob,query
 	
 dirs = os.listdir('.')
 vname = sys.argv[1]

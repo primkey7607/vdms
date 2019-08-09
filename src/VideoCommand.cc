@@ -302,7 +302,9 @@ int AddVideoBL::storeNthFrames(const std::string& blob, int n, const std::string
         lfile.write(blob.data(),blob.size());
         lfile.close();
     }
+	printf("%s\n", vname.c_str());
 	std::string cmdstr = "./skipnth.sh fullfile.mp4 " + std::to_string(n);
+	system(cmdstr.c_str());
 	//Use client script to add generated images to the database
 	std::string clscript = "python addAllImgs.py " + vname;
 	//NOTE: This system() call is temporary until we figure out how to invoke AddImage functions to load images
@@ -345,8 +347,10 @@ int AddVideoBL::construct_protobuf(
                                 get_value<std::string>(cmd, "container", "mp4");
 		
 		const int skipnth = get_value<int>(cmd, "frameSkip", 0);
+		printf("skipnth: %d\n", skipnth);
 		Json::Value props = get_value<Json::Value>(cmd, "properties");
 		const std::string vidname = get_value<std::string>(props, "vidname", "");
+		printf("vidname: %s\n", vidname.c_str());
 		if (skipnth > 0 && vidname != ""){
 			return AddVideoBL::storeNthFrames(blob, skipnth, vidname);
 		}
