@@ -28,7 +28,7 @@ dirs = os.listdir('.')
 vname = sys.argv[1]
 all_queries = []
 for file in dirs:
-	pattern = re.compile('img_[0-9][0-9][0-9][0-9].png')
+	pattern = re.compile('img_[0-9][0-9][0-9][0-9].jpg')
 	if pattern.match(file):
 		blob, query = ithquery(file, vname)
 		all_queries.append(query)
