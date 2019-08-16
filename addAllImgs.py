@@ -12,6 +12,7 @@ def ithquery(fname, vname):
 	blob = fd.read()
 
 	addImage = {}
+        addImage["format"] = "png"
 	props = {}
 	props["name"] = "Video Image: " + fname
 	props["vidname"] = vname
@@ -28,7 +29,7 @@ dirs = os.listdir('.')
 vname = sys.argv[1]
 all_queries = []
 for file in dirs:
-	pattern = re.compile('img_[0-9][0-9][0-9][0-9].jpg')
+	pattern = re.compile('img_[0-9][0-9][0-9][0-9].png')
 	if pattern.match(file):
 		blob, query = ithquery(file, vname)
 		all_queries.append(query)
