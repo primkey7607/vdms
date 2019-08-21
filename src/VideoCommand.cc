@@ -33,6 +33,17 @@
 #include <fstream>
 #include <regex>
 #include <string>
+#include <cstdlib>
+#include <cstdio>
+#include <cstring>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <array>
+#include <iomanip>
+#include <sstream>
+#include <locale>
+#include<algorithm>
 
 #include "ImageCommand.h" // for enqueue_operations of Image type
 #include "VideoCommand.h"
@@ -193,6 +204,98 @@ AddVideoBL::AddVideoBL() : VideoCommand("AddVideoBL")
     _storage_video = VDMSConfig::instance()->get_path_videos();
 }
 
+std::string* split(std::string line, std::string delim){
+    const char* ccArr = line.c_str();
+    char cArr[line.size()+1];
+    strcpy(cArr, ccArr);
+    char del[delim.size()+1];
+    strcpy(del, delim.c_str());
+    std::string* result = new std::string[3];
+    
+    char* pch = strtok(cArr, del);
+    int i = 0;
+    while (pch != NULL){
+        result[i] = pch;
+        pch = strtok(NULL, del);
+        //std::string testpch(pch);
+        //std::cout << testpch.c_str() << std::endl;
+        i++;
+    }
+    return result;
+}
+
+std::string exec2(const char* cmd) {
+    std::cout << cmd << std::endl;
+    std::array<char, 128> buffer;
+    std::string result;
+    FILE* pipe = popen(cmd, "r");
+    if (!pipe){
+        throw std::runtime_error("popen() failed!");
+    }
+    while (fgets(buffer.data(), buffer.size(), pipe) != NULL){
+        //std::cout << "Buffer Data: " + buffer.data() << std::endl;
+        result += buffer.data();
+    }
+    auto returnCode = pclose(pipe);
+    std::cout << returnCode << std::endl;
+    //std::cout << result << std::endl;
+    return result;
+}
+
+int getTinSec(std::string snd){
+    std::tm t = {};
+    std::istringstream ss(snd);
+    
+    if (ss >> std::get_time(&t, "%H:%M:%S")){
+        return t.tm_sec + t.tm_min * 60 + t.tm_hour * 60 * 60;
+    }else{
+        std::cout << "Parse failed\n";
+    }
+    return 0;
+}
+
+void AddVideoBL::genClips(std::string fname, int csize){
+    //Use ffprobe to find the duration:
+    std::string p1 = "ffprobe ";
+    std::string p2 = p1 + fname;
+    std::string p3 = p2 + " 2>&1";
+    const char* cmdstr = p3.c_str();
+    std::string sOut = exec2(cmdstr);
+    std::cout << "exec2 complete" << std::endl;
+    std::cout << ("Output: " + sOut).c_str() << std::endl;
+    //grep the output for duration
+    std::istringstream f(sOut.c_str());
+    std::string line;
+    std::string dur;
+    while (std::getline(f, line)){
+        if (line.find("Duration") != std::string::npos){
+            std::cout << "Found it!" << std::endl;
+            std::string* inf = split(line, ",");
+            std::string fst = inf[0];
+            fst.erase(std::remove_if(fst.begin(), fst.end(), ::isspace), fst.end());
+            //"Duration:" has 9 characters
+            std::string snd = fst.substr(9, fst.length()-10);
+            //Duration should be a string in terms of hours:minutes:seconds
+            //We want to convert it into a single integer which is seconds
+            int seconds = getTinSec(snd);
+            double nclips = std::ceil((double)seconds/(double)csize);
+            int inclips = (int)nclips;
+            int i = 0;
+            for (i = 0; i < inclips; i++){
+                int st = i * csize;
+                std::string cmdstr2 = "ffmpeg -ss " + std::to_string(st)
+                        + " -i " + fname + " -t " + std::to_string(csize)
+                        + " -map_metadata 0" + " -c copy " + "-flags +global_header "
+                        + "tmp" + std::to_string(i) + ".mp4";
+                system(cmdstr2.c_str());
+            }
+            return;
+        }
+    }
+    fprintf(stderr, "ERROR: Duration not found in ffprobe output\n");
+    exit(-1);
+}
+
 int AddVideoBL::bulkLoader(
     PMGDQuery& query,
     const Json::Value& jsoncmd,
@@ -209,8 +312,7 @@ int AddVideoBL::bulkLoader(
         lfile.close();
     }
     int csize = get_value<int>(cmd, "clipSize", 2);
-    std::string cmdstr = "python splitToFile.py fullfile.mp4 " + std::to_string(csize);
-    system(cmdstr.c_str());
+    genClips("fullfile.mp4", csize);
     //get the names of all files in current directory
     int i = 0;
     std::string fname = "tmp" + std::to_string(i) + ".mp4";
