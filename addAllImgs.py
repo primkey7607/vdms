@@ -39,7 +39,5 @@ print(response)
 for r in response:
   if r[u'AddImage'][u'status'] != 0:
     print("Error in response!")
-#8/6/2019: Check this script and the VideoCommand.cc script tomorrow and make sure
-#that they are actually compatible. 
 db.disconnect()
 		
