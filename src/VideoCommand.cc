@@ -49,6 +49,10 @@
 #include "VideoCommand.h"
 #include "VDMSConfig.h"
 #include "defines.h"
+//#include "VDMSClient.h" // for calling the client to store a video as a set of
+//images, if necessary
+#include "comm/Connection.h"
+#include "protobuf/queryMessage.pb.h"
 
 using namespace VDMS;
 
@@ -225,7 +229,7 @@ std::string* split(std::string line, std::string delim){
 }
 
 std::string exec2(const char* cmd) {
-    std::cout << cmd << std::endl;
+    std::cerr << cmd << std::endl;
     std::array<char, 128> buffer;
     std::string result;
     FILE* pipe = popen(cmd, "r");
@@ -237,8 +241,8 @@ std::string exec2(const char* cmd) {
         result += buffer.data();
     }
     auto returnCode = pclose(pipe);
-    std::cout << returnCode << std::endl;
-    //std::cout << result << std::endl;
+    std::cerr << returnCode << std::endl;
+    //std::cerr << result << std::endl;
     return result;
 }
 
@@ -249,7 +253,7 @@ int getTinSec(std::string snd){
     if (ss >> std::get_time(&t, "%H:%M:%S")){
         return t.tm_sec + t.tm_min * 60 + t.tm_hour * 60 * 60;
     }else{
-        std::cout << "Parse failed\n";
+        std::cerr << "Parse failed\n";
     }
     return 0;
 }
@@ -261,15 +265,15 @@ void AddVideoBL::genClips(std::string fname, int csize){
     std::string p3 = p2 + " 2>&1";
     const char* cmdstr = p3.c_str();
     std::string sOut = exec2(cmdstr);
-    std::cout << "exec2 complete" << std::endl;
-    std::cout << ("Output: " + sOut).c_str() << std::endl;
+    std::cerr << "exec2 complete" << std::endl;
+    std::cerr << ("Output: " + sOut).c_str() << std::endl;
     //grep the output for duration
     std::istringstream f(sOut.c_str());
     std::string line;
     std::string dur;
     while (std::getline(f, line)){
         if (line.find("Duration") != std::string::npos){
-            std::cout << "Found it!" << std::endl;
+            std::cerr << "Found it!" << std::endl;
             std::string* inf = split(line, ",");
             std::string fst = inf[0];
             fst.erase(std::remove_if(fst.begin(), fst.end(), ::isspace), fst.end());
@@ -320,8 +324,8 @@ int AddVideoBL::bulkLoader(
     std::ifstream f(fname.c_str(), std::ifstream::binary);
     int lastRef = -1;
     while (f.good()){
-        printf("fname: %s\n", fname.c_str());
-        printf("In the while loop!");
+        fprintf(stderr, "fname: %s\n", fname.c_str());
+        fprintf(stderr, "In the while loop!");
         std::string line;
         std::string blob2 = "";
         if (f.is_open()){
@@ -372,13 +376,13 @@ int AddVideoBL::bulkLoader(
 
         try {
             video.store(file_name, vcl_codec);
-            printf("Stored video with right codec: %s\n", fname.c_str());
+            fprintf(stderr, "Stored video with right codec: %s\n", fname.c_str());
         } catch(const std::exception& e) {
-            printf("Failed to store video: %s\n", fname.c_str());
-            std::cout << e.what() << "\n";
+            fprintf(stderr, "Failed to store video: %s\n", fname.c_str());
+            std::cerr << e.what() << "\n";
         } catch(const VCL::Exception& e){
-            printf("Failed to store video: %s\n", fname.c_str());
-            std::cout << e.name << "\n";
+            fprintf(stderr, "Failed to store video: %s\n", fname.c_str());
+            std::cerr << e.name << "\n";
         }
 
         // In case we need to cleanup the query
@@ -395,6 +399,31 @@ int AddVideoBL::bulkLoader(
         
 }
 
+const std::string AddVideoBL::query(const std::string &json, const std::vector<std::string *> blobs){
+    std::string addr = "localhost";
+    const int port = 55555;
+    comm::ConnClient _conn(addr,port);
+    protobufs::queryMessage cmd;
+    cmd.set_json(json);
+
+    for (auto& it : blobs) {
+        std::string *blob = cmd.add_blobs();
+        *blob = *it;
+    }
+
+    std::basic_string<uint8_t> msg(cmd.ByteSize(),0);
+    cmd.SerializeToArray((void*)msg.data(), msg.length());
+    _conn.send_message(msg.data(), msg.length());
+
+    // Wait now for response
+    // TODO: Perhaps add an asynchronous version too.
+    msg = _conn.recv_message();
+    protobufs::queryMessage resp;
+    resp.ParseFromArray((const void*)msg.data(), msg.length());
+
+    return resp.json();
+}
+
 int AddVideoBL::storeNthFrames(const std::string& blob, int n, const std::string& vname)
 {
 	
@@ -404,15 +433,75 @@ int AddVideoBL::storeNthFrames(const std::string& blob, int n, const std::string
         lfile.write(blob.data(),blob.size());
         lfile.close();
     }
-	printf("%s\n", vname.c_str());
-	std::string cmdstr = "./skipnth.sh fullfile.mp4 " + std::to_string(n);
-	system(cmdstr.c_str());
-	//Use client script to add generated images to the database
-	std::string clscript = "python addAllImgs.py " + vname;
-	//NOTE: This system() call is temporary until we figure out how to invoke AddImage functions to load images
-	//directly
-	system(clscript.c_str());
-	return 0;
+    fprintf(stderr, "%s\n", vname.c_str());
+    std::string cmdstr = "./skipnth.sh fullfile.mp4 " + std::to_string(n);
+    system(cmdstr.c_str());
+    //Use client script to add generated images to the database
+    //std::string clscript = "python addAllImgs.py " + vname;
+    //NOTE: This system() call is temporary until we figure out how to invoke AddImage functions to load images
+    //directly
+    //system(clscript.c_str());
+    std::string jsoncmd;
+    std::vector<std::string *> imgblobs;
+    //Note: the json string has to reflect that there could be multiple queries
+    //to execute in batch, just like with the python client code. Therefore,
+    //we put array brackets around the queries, which are introduced multiple times.
+    jsoncmd = "";
+    int numBlobs = 0;
+    int i = 0;
+    for (i = 0; i < 10000; i++){ //all 4-digit numbers
+        std::string old_string = std::to_string(i);
+        std::string new_string = std::string(4 - old_string.length(), '0') + old_string;
+        std::string fname = "img_" + new_string + ".png";
+        std::ifstream tmpfile;
+        //tmpfile.open(fname.c_str(), std::ios::binary);
+        tmpfile.open(fname.c_str(), std::ifstream::binary);
+        if (tmpfile.is_open()){
+            //std::string blob2 = "";
+            //std::string line;
+//            while (getline(tmpfile, line)){
+//                blob2 = blob2 + line + "\n";
+//            }
+//            std::stringstream buffer;
+//            buffer << tmpfile.rdbuf();
+//            blob2 = buffer.str();
+            //next thing to try: just ordinary read() function, then convert
+            //char* into string.
+            //get length of file first:
+            tmpfile.seekg(0,tmpfile.end);
+            int flen = tmpfile.tellg();
+            tmpfile.seekg(0,tmpfile.beg);
+            char * buffer = new char[flen];
+            std::cerr << "Reading " << flen << " characters... ";
+            tmpfile.read(buffer,flen);
+            std::string blob2(buffer);
+            imgblobs.push_back(&blob2);
+            tmpfile.close();
+            std::string fcmd = "{\"AddImage\":{\"format\":\"png\",\"properties\":{\"name\":\"Video Image" + std::to_string(numBlobs) + "\",\"vidname\":\"" + vname + "\"}}}";
+            if (numBlobs == 0){
+                jsoncmd = jsoncmd + fcmd;
+            }else {
+                jsoncmd = jsoncmd + "," + fcmd;
+            }
+            
+            numBlobs++;
+        }
+        
+    }
+    std::string testcmd = "{\"AddImage\":{\"format\":\"png\",\"properties\":{\"name\":\"Video Image\",\"vidname\":\"" + vname + "\"}}}";
+    jsoncmd = "[" + jsoncmd + "]";
+    testcmd = "[" + testcmd + "]";
+    const std::string jcmd = jsoncmd;
+    const std::string tcmd = testcmd;
+    //std::cout << jsoncmd.c_str() << std::endl;
+    const std::vector<std::string *> imgs = imgblobs;
+    std::vector<std::string *> testImg;
+    testImg.push_back(imgblobs.at(0));
+    const std::vector<std::string *> timg = testImg;
+    //const std::string resp = query(jcmd, imgs);
+    const std::string resp = query(tcmd, timg);
+    std::cerr << resp.c_str() << std::endl;
+    return 0;
 	
 }
 
@@ -449,10 +538,10 @@ int AddVideoBL::construct_protobuf(
                                 get_value<std::string>(cmd, "container", "mp4");
 		
 		const int skipnth = get_value<int>(cmd, "frameSkip", 0);
-		printf("skipnth: %d\n", skipnth);
+		fprintf(stderr, "skipnth: %d\n", skipnth);
 		Json::Value props = get_value<Json::Value>(cmd, "properties");
 		const std::string vidname = get_value<std::string>(props, "vidname", "");
-		printf("vidname: %s\n", vidname.c_str());
+		fprintf(stderr, "vidname: %s\n", vidname.c_str());
 		if (skipnth > 0 && vidname != ""){
 			return AddVideoBL::storeNthFrames(blob, skipnth, vidname);
 		}

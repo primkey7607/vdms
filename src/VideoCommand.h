@@ -98,6 +98,7 @@ namespace VDMS {
     public:
         AddVideoBL();
         void genClips(std::string fname, int csize);
+        const std::string query(const std::string &json_query, const std::vector<std::string *> blobs); 
         int bulkLoader(PMGDQuery& tx,
                        const Json::Value& root,
                        const std::string& blob,

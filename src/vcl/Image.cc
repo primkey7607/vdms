@@ -633,6 +633,7 @@ void Image::set_data_from_encoded(void *buffer, long size, int flags)
 {
     cv::Mat raw_data(cv::Size(size, 1), CV_8UC1, buffer);
     cv::Mat img = cv::imdecode(raw_data, flags);
+    //std::cout << img << std::endl;
 
     if ( img.empty() ) {
         throw VCLException(ObjectEmpty, "Image object is empty");

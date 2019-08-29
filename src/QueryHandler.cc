@@ -83,7 +83,7 @@ void QueryHandler::init()
     _rs_cmds["FindBoundingBox"]    = new FindBoundingBox();
 
     _rs_cmds["AddVideo"]           = new AddVideo();
-    _rs_cmds["AddVideoBL"]           = new AddVideoBL();
+    _rs_cmds["AddVideoBL"]         = new AddVideoBL();
     _rs_cmds["UpdateVideo"]        = new UpdateVideo();
     _rs_cmds["FindVideo"]          = new FindVideo();
     _rs_cmds["FindFrames"]         = new FindFrames();
@@ -262,7 +262,8 @@ int QueryHandler::parse_commands(const protobufs::queryMessage& proto_query,
             return -1;
         }
 
-    } catch (Json::Exception const&) {
+    } catch (Json::Exception const& e) {
+        std::cerr << e.what() << std::endl;
         root["info"] = "Json Exception at Parsing";
         root["status"] = RSCommand::Error;
         return -1;
