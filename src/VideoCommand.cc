@@ -323,6 +323,9 @@ int AddVideoBL::bulkLoader(
     //std::string fname = "tmp6.mp4";
     std::ifstream f(fname.c_str(), std::ifstream::binary);
     int lastRef = -1;
+	
+	Json::Value allprops = get_value<Json::Value>(cmd, "properties");
+	
     while (f.good()){
         fprintf(stderr, "fname: %s\n", fname.c_str());
         fprintf(stderr, "In the while loop!");
@@ -363,7 +366,8 @@ int AddVideoBL::bulkLoader(
         // is a good option to make the AddNode more simple.
         // This is not ideal since we are manupulating with user's
         // input, but for now it is an acceptable solution.
-        Json::Value props = get_value<Json::Value>(cmd, "properties");
+        Json::Value props = allprops[i];
+		
         props[VDMS_VID_PATH_PROP] = file_name;
 
         // Add Video node
