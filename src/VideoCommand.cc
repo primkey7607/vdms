@@ -366,7 +366,7 @@ int AddVideoBL::bulkLoader(
         // is a good option to make the AddNode more simple.
         // This is not ideal since we are manupulating with user's
         // input, but for now it is an acceptable solution.
-        Json::Value props = allprops[i];
+        Json::Value props = get_value<Json::Value>(allprops, i);
 		
         props[VDMS_VID_PATH_PROP] = file_name;
 
