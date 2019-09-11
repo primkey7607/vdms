@@ -169,6 +169,10 @@ void PMGDQuery::set_property(PMGDProp* p, const std::string& key,
                              const Json::Value& val)
 {
     p->set_key(key);
+	//convert json value to string
+	Json::StreamWriterBuilder builder;
+	const std::string output = Json::writeString(builder, val);
+	printf(("PMGD val: \n" + output).c_str())
 
     switch (val.type()) {
         case Json::intValue:
