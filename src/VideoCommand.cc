@@ -325,7 +325,10 @@ int AddVideoBL::bulkLoader(
     int lastRef = -1;
 	
 	Json::Value allprops = get_value<Json::Value>(cmd, "properties");
-	
+	//print properties
+	Json::StreamWriterBuilder builder;
+	const std::string apstr = Json::writeString(builder, allprops);
+	printf(("properties: \n" + apstr + "\n").c_str())
     while (f.good()){
         fprintf(stderr, "fname: %s\n", fname.c_str());
         fprintf(stderr, "In the while loop!");
