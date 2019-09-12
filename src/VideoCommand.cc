@@ -369,7 +369,7 @@ int AddVideoBL::bulkLoader(
         // is a good option to make the AddNode more simple.
         // This is not ideal since we are manupulating with user's
         // input, but for now it is an acceptable solution.
-		std::string ith = std::to_string(i)
+		std::string ith = std::to_string(i);
         Json::Value props = allprops[ith.c_str()];
 		
         props[VDMS_VID_PATH_PROP] = file_name;
