@@ -77,7 +77,8 @@ void Connection::shutdown()
 void Connection::send_message(const uint8_t *data, uint32_t size)
 {
     if (size > MAX_BUFFER_SIZE) {
-		fprintf(stderr, ("Max Buffer Size: " + std::to_string(MAX_BUFFER_SIZE)).c_str());
+		fprintf(stderr, "%s\n", ("Message Size: " + std::to_string(size)).c_str());
+		fprintf(stderr, "%s\n", ("Max Buffer Size: " + std::to_string(MAX_BUFFER_SIZE)).c_str());
         throw ExceptionComm(InvalidMessageSize);
     }
 
