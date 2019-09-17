@@ -60,7 +60,7 @@ protected:
     const unsigned MAX_RETRIES      = 100;
     //const unsigned MAX_BUFFER_SIZE  = (32*1024*1024);
     //const unsigned MAX_BUFFER_SIZE  = (512*1024*1024);
-	const unsigned MAX_BUFFER_SIZE  = (2048*1024*1024);
+	const unsigned MAX_BUFFER_SIZE  = (2047*1024*1024);
 
     std::basic_string<uint8_t> buffer_str;
 
