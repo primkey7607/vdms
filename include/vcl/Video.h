@@ -31,6 +31,7 @@
 
 #pragma once
 
+#include <list>
 #include <memory> // For shared_ptr
 #include <string>
 
@@ -40,6 +41,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include "vcl/Image.h"
+#include "vcl/KeyFrameParser.h"
 
 #include "Exception.h"
 #include "utils.h"
@@ -175,6 +177,16 @@ namespace VCL {
          */
         std::vector<unsigned char> get_encoded();
 
+        /**
+         *  Invokes key-frame generation on the video, if the video is encoded
+         *  with a H264 encoder. Index, and byte offset/length of each key
+         *  frame is stored. This operation is independent of other prior
+         *  visual operations that may have been applied.
+         *
+         * @return List of KeyFrame objects
+         */
+        const KeyFrameList& get_key_frame_list();
+
     /*  *********************** */
     /*        SET FUNCTIONS     */
     /*  *********************** */
@@ -278,6 +290,10 @@ namespace VCL {
 
         class Operation;
 
+        // Forward declaration of VideoTest class, that is used for the unit
+        // test to accesss private methods of this class
+        friend class VideoTest;
+
         // Full path to the video file.
         // It is called _video_id to keep it consistent with VCL::Image
         std::string _video_id;
@@ -292,7 +308,10 @@ namespace VCL {
 
         Codec _codec; // (h.264, etc).
 
-        std::vector<std::shared_ptr<Operation>> _operations;
+        // List of key frames, filled only when KeyFrames operation is applied
+        KeyFrameList _key_frame_list;
+
+        std::list<std::shared_ptr<Operation>> _operations;
 
     /*  *********************** */
     /*        OPERATION         */
@@ -516,12 +535,12 @@ namespace VCL {
     /*       UTILITIES          */
     /*  *********************** */
         /**
-         *  Stores a Read Operation in the list of operations
-         *    to perform
+         *  Checks whether the video pointed by the current video_id has
+         *  already been read.
          *
-         *  @param Video_id  The full path to the Video to be read
+         * @return true if video was read, false otherwise
          */
-        void read(const std::string &video_id );
+        bool is_read(void);
 
         /**
          *  Performs the set of operations that have been requested

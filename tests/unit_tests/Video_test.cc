@@ -90,12 +90,22 @@ protected:
     }
 };
 
+namespace VCL {
+
+    class VideoTest : public Video {
+
+    public:
+        VideoTest() : Video() {}
+        VideoTest(std::string a) : Video(a) {}
+
+        using Video::perform_operations;
+    };
+};
+
 TEST_F(VideoTest, DefaultConstructor)
 {
     VCL::Video video_data;
-    long input_frame_count = video_data.get_frame_count();
-
-    ASSERT_EQ(input_frame_count, 0);
+    ASSERT_THROW(video_data.get_frame_count(), VCL::Exception);
 }
 
 TEST_F(VideoTest, StringConstructor)
@@ -648,5 +658,40 @@ TEST_F(VideoTest, CropWrite)
     } catch(VCL::Exception &e) {
         print_exception(e);
         ASSERT_TRUE(false);
+    }
+}
+
+TEST_F(VideoTest, KeyFrameExtractionSuccess)
+{
+    #if VIDEO_KEYFRAMES
+    try {
+        VCL::VideoTest video_data(_video_path_mp4_h264);
+
+        auto key_frame_list = video_data.get_key_frame_list();
+
+        // We know that this video contains exactly four I-frames.
+        // Changing the video will fail this test. If the functionality
+        // is to be tested with other videos, either create a seperate test
+        // or update the assertion below accordingly.
+        ASSERT_TRUE(key_frame_list.size() == 4);
+
+    } catch (VCL::Exception e) {
+        print_exception(e);
+        ASSERT_TRUE(false);
+    }
+    #endif
+}
+
+TEST_F(VideoTest, KeyFrameExtractionFailure)
+{
+    VCL::KeyFrameList key_frame_list;
+    try {
+        VCL::VideoTest video_data(_video_path_avi_xvid);
+
+        key_frame_list = video_data.get_key_frame_list();
+
+    } catch (VCL::Exception e) {
+        print_exception(e);
+        ASSERT_TRUE(key_frame_list.empty());
     }
 }

@@ -1,4 +1,6 @@
 /**
+ * @file   KeyFrameParser.h
+ *
  * @section LICENSE
  *
  * The MIT License
@@ -31,31 +33,42 @@
 
 #include <string>
 #include <vector>
-#include "comm/Connection.h"
 
-namespace VDMS {
+#include "Exception.h"
 
-    struct Response {
-        std::string json;
-        std::vector<std::string> blobs;
+extern "C"
+{
+#include <libavformat/avformat.h>
+}
+
+namespace VCL {
+
+    struct KeyFrame {
+        uint64_t idx;
+        int64_t  base;
     };
 
-    class VDMSClient {
-        static const int VDMS_PORT = 55555;
+    typedef std::vector<KeyFrame> KeyFrameList;
 
-        // The constructor of the ConnClient class already connects to the
-        // server if instantiated with the right address and port and it gets
-        // disconnected when the class goes out of scope. For now, we
-        // will leave the functioning like that. If the client has a need to
-        // disconnect and connect specifically, then we can add explicit calls.
-        comm::ConnClient _conn;
+    class KeyFrameParser {
+    private:
+        struct TraceContext {
+            AVFormatContext* fmt_context;
+            unsigned stream_index;
+        };
 
+        TraceContext _tctx;
+        std::string  _filename;
+        KeyFrameList _frame_list;
+
+        int init_stream(void) noexcept;
+        int fill_frame_list(void) noexcept;
+        std::string error_msg(int errnum, const std::string& opt = "");
+        void context_cleanup (void);
     public:
-        VDMSClient(std::string addr = "localhost", int port = VDMS_PORT);
+        KeyFrameParser(std::string filename);
+        ~KeyFrameParser();
 
-        // Blocking call
-        VDMS::Response query(const std::string &json_query,
-                             const std::vector<std::string *> blobs = {});
-
+        const KeyFrameList& parse(void);
     };
-};
+}
