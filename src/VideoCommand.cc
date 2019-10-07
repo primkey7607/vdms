@@ -342,7 +342,6 @@ int AddVideoBL::bulkLoader(
     //get the names of all files in current directory
     int i = 0;
     std::string fname = "tmp" + std::to_string(i) + ".mp4";
-    //std::string fname = "tmp6.mp4";
     std::ifstream f(fname.c_str(), std::ifstream::binary);
     int lastRef = -1;
 	
@@ -374,53 +373,70 @@ int AddVideoBL::bulkLoader(
         }
         VCL::Video video((void*)blob2.data(), blob2.size());
 
-        if (cmd.isMember("operations")) {
-            enqueue_operations(video, cmd["operations"]);
-        }
+		// Key frame extraction works on binary stream data, without encoding. We
+		// check whether key-frame extraction is to be applied, and if so, we
+		// extract the frames before any other operations are applied. Applying
+		// key-frame extraction after applying pending operations will be
+		// non-optimal: the video will be decoded while performing the operations.
+		VCL::KeyFrameList frame_list;
+		if (get_value<bool>(cmd, "index_frames", false))
+			frame_list = video.get_key_frame_list();
 
-        // The container and codec are checked by the schema.
-        // We default to mp4 and h264, if not specified
-        const std::string& container =
-                            get_value<std::string>(cmd, "container", "mp4");
+		if (cmd.isMember("operations")) {
+			enqueue_operations(video, cmd["operations"]);
+		}
 
-        const std::string& file_name =
-                            VCL::create_unique(_storage_video, container);
-            
+		// The container and codec are checked by the schema.
+		// We default to mp4 and h264, if not specified
+		const std::string& container =
+								get_value<std::string>(cmd, "container", "mp4");
+		const std::string& file_name =
+								VCL::create_unique(_storage_video, container);
 
-        // Modifiyng the existing properties that the user gives
-        // is a good option to make the AddNode more simple.
-        // This is not ideal since we are manupulating with user's
-        // input, but for now it is an acceptable solution.
+		// Modifiyng the existing properties that the user gives
+		// is a good option to make the AddNode more simple.
+		// This is not ideal since we are manupulating with user's
+		// input, but for now it is an acceptable solution.
 		std::string ith = std::to_string(i);
-        Json::Value props = allprops[ith.c_str()];
-		
-        props[VDMS_VID_PATH_PROP] = file_name;
+		Json::Value props = allprops[ith.c_str()];
+		props[VDMS_VID_PATH_PROP] = file_name;
 
-        // Add Video node
-        query.AddNode(node_ref, VDMS_VID_TAG, props, Json::Value());
-            
+		// Add Video node
+		query.AddNode(node_ref, VDMS_VID_TAG, props, Json::Value());
 
-        const std::string& codec = get_value<std::string>(cmd, "codec", "h264");
-            
-        VCL::Video::Codec vcl_codec = string_to_codec(codec);
+		const std::string& codec = get_value<std::string>(cmd, "codec", "h264");
+		VCL::Video::Codec vcl_codec = string_to_codec(codec);
 
-        try {
-            video.store(file_name, vcl_codec);
-            fprintf(stderr, "Stored video with right codec: %s\n", fname.c_str());
-        } catch(const std::exception& e) {
-            fprintf(stderr, "Failed to store video: %s\n", fname.c_str());
-            std::cerr << e.what() << "\n";
-        } catch(const VCL::Exception& e){
-            fprintf(stderr, "Failed to store video: %s\n", fname.c_str());
-            std::cerr << e.name << "\n";
-        }
+		try {
+			video.store(file_name, vcl_codec);
+			fprintf(stderr, "Stored video with right codec: %s\n", fname.c_str());
+		} catch(const std::exception& e) {
+			fprintf(stderr, "Failed to store video: %s\n", fname.c_str());
+			std::cerr << e.what() << "\n";
+		} catch(const VCL::Exception& e){
+			fprintf(stderr, "Failed to store video: %s\n", fname.c_str());
+			std::cerr << e.name << "\n";
+		}
 
-        // In case we need to cleanup the query
-        error["video_added"] = file_name;
+		// Add key-frames (if extracted) as nodes connected to the video
+		for (const auto &frame : frame_list) {
+			Json::Value frame_props;
+			frame_props[VDMS_KF_IDX_PROP]  = static_cast<Json::UInt64>(frame.idx);
+			frame_props[VDMS_KF_BASE_PROP] = static_cast<Json::Int64> (frame.base);
 
-        if (cmd.isMember("link")) {
-            add_link(query, cmd["link"], node_ref, VDMS_VID_EDGE);
-        }
+			int frame_ref = query.get_available_reference();
+			query.AddNode(frame_ref, VDMS_KF_TAG, frame_props,
+						  Json::Value());
+			query.AddEdge(-1, node_ref, frame_ref, VDMS_KF_EDGE,
+						  Json::Value());
+		}
+
+		// In case we need to cleanup the query
+		error["video_added"] = file_name;
+
+		if (cmd.isMember("link")) {
+			add_link(query, cmd["link"], node_ref, VDMS_VID_EDGE);
+		}
         i++;
         fname = "tmp" + std::to_string(i) + ".mp4";
         f.open(fname);
@@ -558,47 +574,68 @@ int AddVideoBL::construct_protobuf(
 
         VCL::Video video((void*)blob.data(), blob.size());
 
-        if (cmd.isMember("operations")) {
-            enqueue_operations(video, cmd["operations"]);
-        }
+		// Key frame extraction works on binary stream data, without encoding. We
+		// check whether key-frame extraction is to be applied, and if so, we
+		// extract the frames before any other operations are applied. Applying
+		// key-frame extraction after applying pending operations will be
+		// non-optimal: the video will be decoded while performing the operations.
+		VCL::KeyFrameList frame_list;
+		if (get_value<bool>(cmd, "index_frames", false))
+			frame_list = video.get_key_frame_list();
 
-        // The container and codec are checked by the schema.
-        // We default to mp4 and h264, if not specified
-        const std::string& container =
-                                get_value<std::string>(cmd, "container", "mp4");
-		
+		if (cmd.isMember("operations")) {
+			enqueue_operations(video, cmd["operations"]);
+		}
+
+		// The container and codec are checked by the schema.
+		// We default to mp4 and h264, if not specified
+		const std::string& container =
+								get_value<std::string>(cmd, "container", "mp4");
+		const std::string& file_name =
+								VCL::create_unique(_storage_video, container);
+
+		// Modifiyng the existing properties that the user gives
+		// is a good option to make the AddNode more simple.
+		// This is not ideal since we are manupulating with user's
+		// input, but for now it is an acceptable solution.
+		Json::Value props = get_value<Json::Value>(cmd, "properties");
+		props[VDMS_VID_PATH_PROP] = file_name;
+	
 		const int skipnth = get_value<int>(cmd, "frameSkip", 0);
 		fprintf(stderr, "skipnth: %d\n", skipnth);
-		Json::Value props = get_value<Json::Value>(cmd, "properties");
 		const std::string vidname = get_value<std::string>(props, "vidname", "");
 		fprintf(stderr, "vidname: %s\n", vidname.c_str());
 		if (skipnth > 0 && vidname != ""){
 			return AddVideoBL::storeNthFrames(blob, skipnth, vidname);
 		}
-    
-        const std::string& file_name =
-                            VCL::create_unique(_storage_video, container);
 
-        // Modifiyng the existing properties that the user gives
-        // is a good option to make the AddNode more simple.
-        // This is not ideal since we are manupulating with user's
-        // input, but for now it is an acceptable solution.
-        props[VDMS_VID_PATH_PROP] = file_name;
+		// Add Video node
+		query.AddNode(node_ref, VDMS_VID_TAG, props, Json::Value());
 
-        // Add Video node
-        query.AddNode(node_ref, VDMS_VID_TAG, props, Json::Value());
+		const std::string& codec = get_value<std::string>(cmd, "codec", "h264");
+		VCL::Video::Codec vcl_codec = string_to_codec(codec);
 
-        const std::string& codec = get_value<std::string>(cmd, "codec", "h264");
-        VCL::Video::Codec vcl_codec = string_to_codec(codec);
+		video.store(file_name, vcl_codec);
 
-        video.store(file_name, vcl_codec);
+		// Add key-frames (if extracted) as nodes connected to the video
+		for (const auto &frame : frame_list) {
+			Json::Value frame_props;
+			frame_props[VDMS_KF_IDX_PROP]  = static_cast<Json::UInt64>(frame.idx);
+			frame_props[VDMS_KF_BASE_PROP] = static_cast<Json::Int64> (frame.base);
 
-        // In case we need to cleanup the query
-        error["video_added"] = file_name;
+			int frame_ref = query.get_available_reference();
+			query.AddNode(frame_ref, VDMS_KF_TAG, frame_props,
+						  Json::Value());
+			query.AddEdge(-1, node_ref, frame_ref, VDMS_KF_EDGE,
+						  Json::Value());
+		}
 
-        if (cmd.isMember("link")) {
-            add_link(query, cmd["link"], node_ref, VDMS_VID_EDGE);
-        }
+		// In case we need to cleanup the query
+		error["video_added"] = file_name;
+
+		if (cmd.isMember("link")) {
+			add_link(query, cmd["link"], node_ref, VDMS_VID_EDGE);
+		}
     }else { 
         int retval = AddVideoBL::bulkLoader(query, jsoncmd, blob, grp_id, error);
     }
