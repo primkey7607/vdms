@@ -349,10 +349,10 @@ int AddVideoBL::bulkLoader(
 	//print properties
 	Json::StreamWriterBuilder builder;
 	const std::string apstr = Json::writeString(builder, allprops);
-	printf("%s", ("properties: \n" + apstr + "\n").c_str());
+	//printf("%s", ("properties: \n" + apstr + "\n").c_str());
     while (f.good()){
-        fprintf(stderr, "fname: %s\n", fname.c_str());
-        fprintf(stderr, "In the while loop!");
+        //fprintf(stderr, "fname: %s\n", fname.c_str());
+        //fprintf(stderr, "In the while loop!");
         std::string line;
         std::string blob2 = "";
         if (f.is_open()){
@@ -409,7 +409,7 @@ int AddVideoBL::bulkLoader(
 
 		try {
 			video.store(file_name, vcl_codec);
-			fprintf(stderr, "Stored video with right codec: %s\n", fname.c_str());
+			//fprintf(stderr, "Stored video with right codec: %s\n", fname.c_str());
 		} catch(const std::exception& e) {
 			fprintf(stderr, "Failed to store video: %s\n", fname.c_str());
 			std::cerr << e.what() << "\n";
@@ -479,7 +479,7 @@ int AddVideoBL::storeNthFrames(const std::string& blob, int n, const std::string
         lfile.write(blob.data(),blob.size());
         lfile.close();
     }
-    fprintf(stderr, "%s\n", vname.c_str());
+    //fprintf(stderr, "%s\n", vname.c_str());
     std::string cmdstr = "./skipnth.sh fullfile.mp4 " + std::to_string(n);
     system(cmdstr.c_str());
     //Use client script to add generated images to the database
@@ -602,9 +602,9 @@ int AddVideoBL::construct_protobuf(
 		props[VDMS_VID_PATH_PROP] = file_name;
 	
 		const int skipnth = get_value<int>(cmd, "frameSkip", 0);
-		fprintf(stderr, "skipnth: %d\n", skipnth);
+		//fprintf(stderr, "skipnth: %d\n", skipnth);
 		const std::string vidname = get_value<std::string>(props, "vidname", "");
-		fprintf(stderr, "vidname: %s\n", vidname.c_str());
+		//fprintf(stderr, "vidname: %s\n", vidname.c_str());
 		if (skipnth > 0 && vidname != ""){
 			return AddVideoBL::storeNthFrames(blob, skipnth, vidname);
 		}
